@@ -1,0 +1,578 @@
+/* ===========================================================================
+   The manual. Loaded on top of site.css, which supplies the fonts, the colour
+   tokens and the reset.
+
+   Two states in one stylesheet: the lock screen, and the document behind it.
+   The document is a reference, not a page to be scrolled once, so it is built
+   for the two things a reference gets used for: jumping to a heading, and
+   reading a screenshot at a size where the words in it can be read.
+   =========================================================================== */
+
+.manual-page {
+  background: var(--bg);
+}
+
+/* site.css asks for smooth scrolling, which is right for a landing page and
+   wrong here: the manual is ninety thousand pixels tall, so a jump from the
+   contents to a chapter is an animation over tens of thousands of them. On a
+   desktop it crawls; on a phone the scroll simply never arrives and the link
+   looks broken. Loaded after site.css, so this wins. */
+html:has(.manual-page) { scroll-behavior: auto; }
+
+/* --- the lock screen ------------------------------------------------------ */
+
+.gate {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: var(--gap);
+}
+
+.gate-card {
+  width: min(27rem, 100%);
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow);
+  padding: clamp(1.6rem, 4vw, 2.4rem);
+  text-align: left;
+}
+
+.gate-mark {
+  width: 2.9rem;
+  height: 2.9rem;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r);
+  background: var(--accent-wash);
+  color: var(--accent);
+  margin-bottom: 1.4rem;
+}
+
+.gate-card h1 {
+  font-size: var(--step-1);
+  margin-bottom: .5rem;
+}
+
+.gate-lede {
+  color: var(--ink-2);
+  font-size: var(--step--1);
+  margin-bottom: 1.6rem;
+}
+
+.gate-label {
+  display: block;
+  font-size: var(--step--1);
+  font-weight: 560;
+  margin-bottom: .4rem;
+}
+
+.gate-input {
+  width: 100%;
+  font: inherit;
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  padding: .65rem .8rem;
+}
+
+.gate-input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.gate-btn {
+  width: 100%;
+  margin-top: 1rem;
+  justify-content: center;
+}
+
+.gate-btn[disabled] { opacity: .55; cursor: progress; }
+
+.gate-msg {
+  min-height: 1.4rem;
+  margin-top: .8rem;
+  font-size: var(--step--1);
+  color: var(--ink-3);
+}
+
+.gate-msg.is-bad { color: #c0392b; }
+@media (prefers-color-scheme: dark) { .gate-msg.is-bad { color: #f08b7f; } }
+
+.gate-foot {
+  margin-top: 1.5rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--line);
+  font-size: var(--step--1);
+  color: var(--ink-3);
+}
+
+/* --- the document --------------------------------------------------------- */
+
+.manual-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--gap);
+  max-width: 90rem;
+  margin: 0 auto;
+  padding: var(--gap);
+}
+
+/* Three children in one column on a phone, in reading order: what this is, how
+   to get around it, then it. On a desktop the contents moves into its own
+   column and spans both rows, so it can be sticky next to the whole document. */
+@media (min-width: 62rem) {
+  .manual-shell {
+    grid-template-columns: 17rem minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+    gap: 0 clamp(2rem, 4vw, 4rem);
+  }
+  .toc { grid-column: 1; grid-row: 1 / 3; }
+  .manual-head { grid-column: 2; grid-row: 1; }
+  .manual-body { grid-column: 2; grid-row: 2; }
+}
+
+/* --- contents ------------------------------------------------------------- */
+
+.toc {
+  font-size: var(--step--1);
+  line-height: 1.45;
+}
+
+/* On a phone the contents is not a sidebar, it is 63 links stacked in front of
+   chapter one. Boxed and scrolled inside itself it stays a table of contents
+   instead of becoming the first screen and a half of the manual. */
+@media (max-width: 61.99rem) {
+  .toc {
+    max-height: 55vh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: .9rem 1rem;
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    background: var(--bg-raised);
+  }
+}
+
+@media (min-width: 62rem) {
+  .toc {
+    position: sticky;
+    top: var(--gap);
+    align-self: start;
+    max-height: calc(100dvh - 2 * var(--gap));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: .6rem;
+  }
+  /* The sidebar scrolls a lot and its own bar competes with the page's. */
+  .toc::-webkit-scrollbar { width: 6px; }
+  .toc::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
+}
+
+.toc-title {
+  font-size: var(--step--1);
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: .9rem;
+}
+
+.toc ol, .toc ul { list-style: none; margin: 0; padding: 0; }
+
+.toc > ol > li { margin-bottom: .55rem; }
+
+.toc > ol > li > a {
+  display: grid;
+  grid-template-columns: 1.7rem 1fr;
+  align-items: baseline;
+  font-weight: 560;
+  color: var(--ink);
+  text-decoration: none;
+  padding: .18rem 0;
+}
+
+.toc-n {
+  color: var(--ink-3);
+  font-family: 'Geist Mono', ui-monospace, monospace;
+  font-size: .78em;
+  font-variant-numeric: tabular-nums;
+}
+
+.toc ul {
+  margin: .15rem 0 .5rem 1.7rem;
+  border-left: 1px solid var(--line);
+}
+
+.toc ul a {
+  display: block;
+  color: var(--ink-3);
+  text-decoration: none;
+  padding: .16rem 0 .16rem .7rem;
+  margin-left: -1px;
+  border-left: 1px solid transparent;
+}
+
+.toc a:hover { color: var(--accent); }
+.toc ul a:hover { border-left-color: var(--accent); }
+
+.toc a.is-current { color: var(--accent); }
+.toc ul a.is-current { border-left-color: var(--accent); font-weight: 560; }
+
+/* --- the body ------------------------------------------------------------- */
+
+/* site.css lays out marketing pages, where a <section> is a full-bleed band with
+   6.5rem of air and a rule above it. Here a section is a subheading and three
+   paragraphs, so both of those have to go before anything else lines up. */
+.manual-body section { padding-block: 0; }
+.manual-body section + section { border-top: none; }
+
+/* Two widths, not one. Prose stays at a readable measure; a screenshot of a
+   dense admin screen gets the whole column, because scaled into a 56rem slot the
+   figures in it stop being legible. Doing this with negative margins instead
+   looked right until the numbers were checked: the free space is all on the
+   right, so a symmetric break-out eats the gap and runs under the contents. */
+.manual-body {
+  min-width: 0;
+  max-width: 64rem;
+}
+
+.sec > h2,
+.sec > h3,
+.sec > p,
+.sec > ul,
+.sec > ol,
+.sec > dl,
+.sec > .cal {
+  max-width: 54rem;
+}
+
+.manual-head {
+  padding-bottom: 2.2rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.manual-head .eyebrow {
+  font-size: var(--step--1);
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: .7rem;
+}
+
+.manual-head h1 { font-size: var(--step-3); }
+
+.manual-head .lede {
+  margin-top: .9rem;
+  font-size: var(--step-1);
+  color: var(--ink-2);
+  max-width: 42ch;
+}
+
+.manual-head .stamp {
+  margin-top: 1.6rem;
+  font-size: var(--step--1);
+  color: var(--ink-3);
+}
+
+.chap {
+  padding-top: clamp(2.5rem, 6vw, 4.5rem);
+  scroll-margin-top: 1rem;
+}
+
+.chap + .chap { border-top: 1px solid var(--line); }
+
+.chap-num {
+  font-family: 'Geist Mono', ui-monospace, monospace;
+  font-size: var(--step--1);
+  letter-spacing: .04em;
+  color: var(--ink-3);
+  margin-bottom: .6rem;
+}
+
+.chap-head h1 { font-size: var(--step-2); }
+
+.chap-head .lede {
+  margin-top: .8rem;
+  font-size: var(--step-1);
+  color: var(--ink-2);
+  max-width: 46ch;
+}
+
+.sec {
+  margin-top: clamp(2rem, 4vw, 3rem);
+  scroll-margin-top: 1rem;
+}
+
+.sec h2 {
+  font-size: var(--step-1);
+  padding-bottom: .5rem;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 1.1rem;
+}
+
+.sec h3 {
+  font-size: var(--step-0);
+  font-weight: 620;
+  margin-top: 2rem;
+  margin-bottom: .6rem;
+  scroll-margin-top: 1rem;
+}
+
+.sec p { margin-bottom: 1rem; color: var(--ink-2); }
+.sec p strong { color: var(--ink); font-weight: 580; }
+
+.sec ul, .sec ol {
+  margin: 0 0 1.2rem;
+  padding-left: 1.3rem;
+  color: var(--ink-2);
+}
+
+.sec li { margin-bottom: .4rem; }
+.sec li::marker { color: var(--ink-3); }
+
+.sec ol { counter-reset: step; list-style: none; padding-left: 0; }
+
+.sec ol > li {
+  counter-increment: step;
+  position: relative;
+  padding-left: 2.4rem;
+  margin-bottom: .7rem;
+}
+
+.sec ol > li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: .1rem;
+  width: 1.6rem;
+  height: 1.6rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--accent-wash);
+  color: var(--accent);
+  font-family: 'Geist Mono', ui-monospace, monospace;
+  font-size: .75rem;
+  font-weight: 600;
+}
+
+.sec code {
+  font-family: 'Geist Mono', ui-monospace, monospace;
+  font-size: .88em;
+  background: var(--bg-sunken);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: .08em .35em;
+  color: var(--ink);
+}
+
+/* --- term lists ----------------------------------------------------------- */
+
+.sec dl {
+  margin: 0 0 1.4rem;
+  display: grid;
+  gap: 0;
+  border-top: 1px solid var(--line);
+}
+
+.sec dt {
+  font-weight: 580;
+  color: var(--ink);
+  padding: .75rem 0 0;
+}
+
+.sec dd {
+  margin: 0;
+  padding: 0 0 .75rem;
+  color: var(--ink-2);
+  border-bottom: 1px solid var(--line);
+}
+
+@media (min-width: 42rem) {
+  .sec dl { grid-template-columns: minmax(9rem, 14rem) 1fr; }
+  .sec dt { padding: .7rem 1.2rem .7rem 0; border-bottom: 1px solid var(--line); }
+  .sec dd { padding: .7rem 0; }
+}
+
+/* --- tables --------------------------------------------------------------- */
+
+.scroller { overflow-x: auto; margin-bottom: 1.4rem; }
+
+.sec table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--step--1);
+  min-width: 32rem;
+}
+
+.sec th, .sec td {
+  text-align: left;
+  vertical-align: top;
+  padding: .6rem .9rem .6rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.sec th {
+  font-weight: 600;
+  color: var(--ink);
+  border-bottom-color: var(--line-strong);
+  white-space: nowrap;
+}
+
+.sec td { color: var(--ink-2); }
+.sec tbody tr:last-child td { border-bottom: none; }
+
+/* --- callouts ------------------------------------------------------------- */
+
+.cal {
+  margin: 0 0 1.4rem;
+  padding: .9rem 1.1rem;
+  border-radius: var(--r);
+  border: 1px solid var(--line);
+  border-left-width: 3px;
+  background: var(--bg-raised);
+  font-size: var(--step--1);
+}
+
+.cal p { margin: 0; color: var(--ink-2); }
+
+.cal::before {
+  display: block;
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  margin-bottom: .3rem;
+}
+
+.cal-note { border-left-color: var(--line-strong); }
+.cal-note::before { content: 'Nota'; color: var(--ink-3); }
+
+.cal-tip { border-left-color: var(--accent); background: var(--accent-wash); }
+.cal-tip::before { content: 'En la práctica'; color: var(--accent); }
+
+.cal-warn { border-left-color: #c9820a; }
+.cal-warn::before { content: 'Cuidado'; color: #a06a08; }
+@media (prefers-color-scheme: dark) {
+  .cal-warn { border-left-color: #e0a83c; }
+  .cal-warn::before { color: #e0a83c; }
+}
+
+/* --- screenshots ---------------------------------------------------------- */
+
+.sec figure.shot {
+  margin: 1.6rem 0 1.8rem;
+}
+
+.sec figure.shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--bg-sunken);
+  box-shadow: var(--shadow);
+  cursor: zoom-in;
+}
+
+/* Every img carries its real width and height, so the box is reserved at the
+   right size before a single encrypted byte has arrived and the document does
+   not grow under the reader. No min-height: it would over-reserve for the wide
+   short crops and reintroduce the shift it was there to prevent. */
+.sec figure.shot:not(.ready) img {
+  border-style: dashed;
+}
+
+.sec figure.shot.missing::after {
+  content: 'No se ha podido cargar esta imagen.';
+  display: block;
+  font-size: var(--step--1);
+  color: var(--ink-3);
+  margin-top: .5rem;
+}
+
+.sec figcaption {
+  margin-top: .6rem;
+  font-size: var(--step--1);
+  color: var(--ink-3);
+}
+
+.sec figcaption { max-width: 54rem; }
+
+/* --- back to the contents ------------------------------------------------- */
+
+/* Only on a phone, where the contents is not a column that stays put but a box
+   at the very top: without this it is a thing you can use exactly once. */
+.toc-jump { display: none; }
+
+@media (max-width: 61.99rem) {
+  .toc-jump {
+    display: block;
+    position: fixed;
+    right: 1rem;
+    bottom: 1rem;
+    z-index: 50;
+    padding: .55rem 1rem;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--bg-raised);
+    color: var(--ink);
+    box-shadow: var(--shadow);
+    font-size: var(--step--1);
+    font-weight: 560;
+    text-decoration: none;
+  }
+}
+
+body.is-zoomed .toc-jump { display: none; }
+
+/* --- the lightbox --------------------------------------------------------- */
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(10, 14, 12, .88);
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  overflow: auto;
+  cursor: zoom-out;
+}
+
+.lightbox img {
+  max-width: none;
+  width: auto;
+  height: auto;
+  border-radius: var(--r-sm);
+  box-shadow: 0 30px 80px -20px rgba(0, 0, 0, .8);
+}
+
+.lightbox-hint {
+  position: fixed;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgba(255, 255, 255, .7);
+  font-size: var(--step--1);
+  pointer-events: none;
+}
+
+body.is-zoomed { overflow: hidden; }
+
+/* --- print ---------------------------------------------------------------- */
+
+@media print {
+  .toc, .lightbox, .toc-jump { display: none; }
+  .manual-shell { display: block; padding: 0; }
+  .manual-body { max-width: none; }
+  .chap { break-before: page; padding-top: 0; }
+  .chap:first-of-type { break-before: avoid; }
+  .sec, .sec figure.shot, .cal { break-inside: avoid; }
+  .sec figure.shot { width: auto; }
+  .sec figure.shot img { box-shadow: none; }
+}
