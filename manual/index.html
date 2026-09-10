@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Manual de uso</title>
+<meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+<meta name="referrer" content="no-referrer">
+<link rel="preload" href="/assets/fonts/geist.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/assets/css/site.css">
+<link rel="stylesheet" href="/assets/css/manual.css">
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+</head>
+<body class="manual-page">
+
+<div id="gate" class="gate">
+  <form class="gate-card" id="gate-form" autocomplete="off">
+    <div class="gate-mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8"
+           stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="10.5" width="16" height="10" rx="2.5"></rect>
+        <path d="M8 10.5V7.2a4 4 0 0 1 8 0v3.3"></path>
+      </svg>
+    </div>
+    <h1>Manual de uso</h1>
+    <p class="gate-lede">Este documento es privado. Escriba la contraseña que le hemos facilitado.</p>
+    <label class="gate-label" for="pw">Contraseña</label>
+    <input class="gate-input" type="password" id="pw" name="pw" autocomplete="current-password"
+           autocapitalize="off" autocorrect="off" spellcheck="false" required>
+    <button class="btn btn-primary gate-btn" type="submit" id="go">Abrir el manual</button>
+    <p class="gate-msg" id="msg" role="status" aria-live="polite"></p>
+    <p class="gate-foot">Si no tiene contraseña, escríbanos y se la damos.</p>
+  </form>
+</div>
+
+<div id="doc" hidden></div>
+
+<script>
+(function () {
+  var SALT = "pZHslV3sb9QDaHnr1skIZQ==";
+  var ITER = 310000;
+
+  var form = document.getElementById('gate-form');
+  var input = document.getElementById('pw');
+  var button = document.getElementById('go');
+  var msg = document.getElementById('msg');
+  var gateEl = document.getElementById('gate');
+  var docEl = document.getElementById('doc');
+  var key = null;
+
+  function b64(s) {
+    var bin = atob(s), out = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+
+  // iv || ciphertext+tag, which is what seal() writes.
+  function open_(bytes) {
+    return crypto.subtle.decrypt({ name: 'AES-GCM', iv: bytes.slice(0, 12) }, key, bytes.slice(12));
+  }
+
+  async function derive(password) {
+    var material = await crypto.subtle.importKey(
+      'raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']);
+    return crypto.subtle.deriveKey(
+      { name: 'PBKDF2', salt: b64(SALT), iterations: ITER, hash: 'SHA-256' },
+      material, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
+  }
+
+  // Screenshots are fetched and decrypted only when they are about to be read.
+  // The manual is one long document with a few dozen of them; pulling them all
+  // on unlock would spend megabytes on pages nobody scrolls to.
+  function watchImages() {
+    var pending = docEl.querySelectorAll('img[data-shot]');
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (!e.isIntersecting) return;
+        var img = e.target;
+        io.unobserve(img);
+        fetch('img/' + img.getAttribute('data-shot') + '.bin')
+          .then(function (r) { return r.ok ? r.arrayBuffer() : Promise.reject(r.status); })
+          .then(function (buf) { return open_(new Uint8Array(buf)); })
+          .then(function (plain) {
+            img.src = URL.createObjectURL(new Blob([plain], { type: 'image/webp' }));
+            img.closest('figure').classList.add('ready');
+          })
+          .catch(function () { img.closest('figure').classList.add('missing'); });
+      });
+    }, { rootMargin: '600px 0px' });
+    pending.forEach(function (img) { io.observe(img); });
+  }
+
+  // Qué trae el fragmento. Dos formas, y la segunda es la que llega desde el panel:
+  //
+  //   #ministerio--cuando-falla        un enlace de toda la vida, compartido por alguien
+  //   #pw=<contraseña>&s=<ancla>       un enlace del panel, que además abre la puerta
+  //
+  // La contraseña va aquí y no en la query porque **el fragmento no se manda al servidor**: no
+  // aparece en los registros de GitHub Pages ni en los de nadie por el camino. Se reconoce por el
+  // principio, así que un ancla que empezara por "pw=" es lo único que confundiría a esto, y no
+  // existe: las anclas las genera slug().
+  function readHash() {
+    var raw = location.hash.slice(1);
+
+    if (raw.indexOf('pw=') !== 0) {
+      return { password: null, anchor: raw ? decodeURIComponent(raw) : '' };
+    }
+
+    var params = new URLSearchParams(raw);
+
+    return { password: params.get('pw'), anchor: params.get('s') || '' };
+  }
+
+  // La contraseña fuera de la barra de direcciones, en cuanto se ha leído.
+  //
+  // replaceState y no pushState: sustituye la entrada del historial en vez de añadir otra, así
+  // que lo que queda anotado en el navegador es el enlace limpio y no el que traía la contraseña.
+  // Y de paso, lo que se copia de la barra para compartir con alguien es un ancla y ya.
+  function cleanHash(anchor) {
+    try {
+      history.replaceState(null, '', location.pathname + (anchor ? '#' + anchor : ''));
+    } catch (e) {}
+  }
+
+  // The anchor in the address bar cannot be honoured until the document exists,
+  // so a shared deep link is replayed once it does.
+  function jumpTo(anchor) {
+    if (!anchor) return;
+    var target = document.getElementById(anchor);
+    if (target) target.scrollIntoView();
+  }
+
+  // A screenshot of a dense admin screen never fits the reading column, so
+  // clicking one opens it at its own size. This is the whole reason the figures
+  // can stay narrow in the flow of the text.
+  function zoomable() {
+    docEl.addEventListener('click', function (e) {
+      var img = e.target.closest('figure.shot.ready img');
+      if (!img) return;
+      var box = document.createElement('div');
+      box.className = 'lightbox';
+      var big = new Image();
+      big.src = img.src;
+      big.alt = img.alt;
+      box.appendChild(big);
+      var hint = document.createElement('p');
+      hint.className = 'lightbox-hint';
+      hint.textContent = 'Pulse en cualquier sitio o Esc para cerrar';
+      box.appendChild(hint);
+      document.body.appendChild(box);
+      document.body.classList.add('is-zoomed');
+      var close = function () {
+        box.remove();
+        document.body.classList.remove('is-zoomed');
+        document.removeEventListener('keydown', onKey);
+      };
+      var onKey = function (ev) { if (ev.key === 'Escape') close(); };
+      box.addEventListener('click', close);
+      document.addEventListener('keydown', onKey);
+    });
+  }
+
+  // Keep the marked entry visible inside a contents list taller than its box,
+  // by moving that box and nothing else.
+  //
+  // This was scrollIntoView({block:'nearest'}), which was fine on a desktop,
+  // where the contents is a sticky column with its own scrollbar, and broke the
+  // manual completely on a phone, where it is not: scrollIntoView walks every
+  // scrollable ancestor including the document, so the moment a tap on a chapter
+  // link scrolled the reader to chapter nine, the observer fired and dragged the
+  // page straight back up to the contents at the top. The link looked dead.
+  function keepVisible(toc, a) {
+    if (toc.scrollHeight <= toc.clientHeight + 1) return;
+    var box = toc.getBoundingClientRect();
+    var link = a.getBoundingClientRect();
+    if (link.top < box.top) toc.scrollTop -= box.top - link.top + 8;
+    else if (link.bottom > box.bottom) toc.scrollTop += link.bottom - box.bottom + 8;
+  }
+
+  // Which chapter the reader is in, marked in the contents. The manual is one
+  // long document, so without this the sidebar says nothing about where you are.
+  function followScroll() {
+    var toc = docEl.querySelector('.toc');
+    var links = {};
+    docEl.querySelectorAll('.toc a[href^="#"]').forEach(function (a) {
+      links[decodeURIComponent(a.getAttribute('href').slice(1))] = a;
+    });
+    var current = null;
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (!e.isIntersecting) return;
+        var a = links[e.target.id];
+        if (!a || a === current) return;
+        if (current) current.classList.remove('is-current');
+        a.classList.add('is-current');
+        current = a;
+        keepVisible(toc, a);
+      });
+    }, { rootMargin: '0px 0px -75% 0px' });
+    docEl.querySelectorAll('.chap, .sec').forEach(function (el) { io.observe(el); });
+  }
+
+  var unlocked = false;
+
+  async function unlock(password, anchor, fromLink) {
+    button.disabled = true;
+    msg.className = 'gate-msg';
+    msg.textContent = 'Descifrando...';
+
+    try {
+      key = await derive(password);
+      var res = await fetch('doc.bin');
+      if (!res.ok) throw new Error('missing');
+      var plain = await open_(new Uint8Array(await res.arrayBuffer()));
+
+      docEl.innerHTML = new TextDecoder().decode(plain);
+      docEl.hidden = false;
+      gateEl.remove();
+      document.body.classList.add('unlocked');
+      unlocked = true;
+      watchImages();
+      zoomable();
+      followScroll();
+      jumpTo(anchor);
+
+      // Kept for this tab only, so a reload while reading does not ask again and
+      // a closed tab does not leave the password on the machine.
+      try { sessionStorage.setItem('manual-pw', password); } catch (e) {}
+    } catch (e) {
+      key = null;
+      button.disabled = false;
+      msg.className = 'gate-msg is-bad';
+      // Quien viene de un enlace no ha tecleado nada, así que "la contraseña no es correcta" le
+      // suena a que se ha equivocado él. Lo que ha pasado es que el panel tiene guardada otra.
+      msg.textContent = fromLink
+        ? 'El enlace no ha podido abrir el manual: la contraseña que trae no vale. Escríbela aquí.'
+        : 'La contraseña no es correcta.';
+      input.select();
+    }
+  }
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (input.value) unlock(input.value, readHash().anchor, false);
+  });
+
+  // Un segundo enlace desde el panel llega aquí y no por una carga nueva: la ventana del manual
+  // tiene nombre, así que se reutiliza, y cambiar solo el fragmento de la misma dirección no
+  // recarga nada. Sin esto, el segundo icono que se pulsa parece no hacer nada — la ventana se
+  // pone delante y se queda donde estaba.
+  window.addEventListener('hashchange', function () {
+    var link = readHash();
+
+    if (link.password) cleanHash(link.anchor);
+
+    if (unlocked) {
+      jumpTo(link.anchor);
+    } else if (link.password) {
+      unlock(link.password, link.anchor, true);
+    }
+  });
+
+  var link = readHash();
+
+  if (link.password) {
+    // Antes de descifrar, que es lo que tarda: cuanto menos tiempo esté en la barra, mejor.
+    cleanHash(link.anchor);
+    unlock(link.password, link.anchor, true);
+  } else {
+    var saved = null;
+    try { saved = sessionStorage.getItem('manual-pw'); } catch (e) {}
+    if (saved) unlock(saved, link.anchor, false);
+  }
+})();
+</script>
+</body>
+</html>
