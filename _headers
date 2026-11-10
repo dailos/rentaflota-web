@@ -1,0 +1,28 @@
+# Cloudflare Pages reads this from the root of the published directory.
+# It is copied into dist/ by the build.
+
+# The fonts and the screenshots are content-addressed by hand: a screenshot only
+# ever changes by being re-shot, and then it is a new deploy anyway. A year of
+# immutable caching costs nothing and saves the 3.8 MB of images on every repeat
+# visit.
+/assets/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/assets/shots/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# The stylesheet has no hash in its name, so it gets revalidated instead.
+/assets/css/*
+  Cache-Control: public, max-age=3600, must-revalidate
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: SAMEORIGIN
+
+# The customer manual. Encrypted, so this is not what protects it; it is so the
+# gate page does not get indexed and invite guessing. GitHub Pages, which serves
+# the site today, ignores this file, and the page carries its own noindex meta
+# for exactly that reason.
+/manual/*
+  X-Robots-Tag: noindex, nofollow
